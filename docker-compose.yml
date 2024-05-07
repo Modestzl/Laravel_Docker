@@ -1,42 +1,67 @@
 # https://www.youtube.com/watch?v=f-7HP9doQOQ   CodeWriter
-# 
+# docker compose up -d
 version: '3'
 
 services:
   php:
-    build:
-      dockerfile: docker/php/Dockerfile
+    container_name: AMphp
+    build: ./docker/php
+#   dockerfile: 
+    volumes:
+      - ./docker/www/public_html:/var/www/public_html
+    depends_on:
+      - mysql
+    networks:
+      - amNet 
+
   nginx:
+    container_name: AMnginx
     image: nginx:latest
     ports:
-      - 80:80
+      - 8000:80
+      - 3000:443
     volumes:
-      - './src:/var/www/html'
-      - './docker/nginx/conf.d:/etc/nginx/conf.d'
+      - ./www:/var/www/html
+      - ./docker/nginx/conf.d/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+#     - ./docker/nginx/conf.d:/etc/nginx/conf.d'
+# - './docker/nginx/conf.d/nginx.conf:/etc/nginx/conf.d/default.conf: ro'
 # посмотреть варианты рестарта (unless-stopped - не перегружать без ведома)
     restart: always
     depends_on:
-        - php
-        - mysqldb
-
+      - php
+      - mysql
+    networks:
+      - amNet
+# Не забыть .env файлик
   mysql:
+    container_name: AMmysql
     image: mysql:8
     ports:
       - 3306:3306
     environment:
       - MYSQL_ROOT_PASSWORD=root
     volumes:
-      - './docker/volume/mysql:/var/lib/mysql'
+      - ./docker/volume/mysql:/var/lib/mysql
 
-    phpmyadmin:
-      image: phpmyadmin
-      container_name: phpmyadmin
-      restart: always
-      ports:
-        - 9090:80
-      environment:
-        - PMA_HOST=mysql
-        - PMA_PORT=3306
-      depends_on:
-            - mysqldb
-      
+    networks:
+      - amNet
+
+  phpmyadmin:
+    image: phpmyadmin
+    container_name: phpmyadmin
+    restart: always
+    ports:
+      - 9090:80
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+    depends_on:
+      - mysql
+    networks:
+      - amNet          
+# network    
+networks:
+  amNet:
+     name: amNet
+     driver: bridge
+     
